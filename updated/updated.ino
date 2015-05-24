@@ -12,9 +12,9 @@ Adafruit_LSM303_Mag_Unified mag = Adafruit_LSM303_Mag_Unified(12345);
 
 #define WAIT_FOR_KEYBOARD 0
 
-#define LED_PIN     3
+#define LED_PIN     2
 #define NUM_LEDS    60
-#define BRIGHTNESS  64
+#define BRIGHTNESS  255
 #define LED_TYPE    WS2811
 #define COLOR_ORDER GRB
 CRGB leds[NUM_LEDS];
@@ -27,12 +27,85 @@ TBlendType    currentBlending;
 extern CRGBPalette16 myRedWhiteBluePalette;
 extern const TProgmemPalette16 myRedWhiteBluePalette_p PROGMEM;
 
-uint8_t brightness = 255;
+const int xMax = 8;
+const int yMax = 16;
+const int xMin = 0;
+const int yMin = 0;
+
+//test matrix for LED rings
+//int ledMatrix[xMax][yMax] = {
+//	{  0,  0,  2,  0,  0 },
+//	{  0, 20,  0, 18,  0 },
+//	{ 22,  0,  0,  0, 26 },
+//	{  0, 42,  0, 40,  0 },
+//	{  0,  0, 46,  0,  0 }
+//};
+
+//int ledMatrix[xMax][yMax] = {
+//	{  0,  1,  2,  3,  4 },
+//	{ 21, 20, 19, 18, 17 },
+//	{ 22, 23, 24, 25, 26 },
+//	{ 43, 42, 41, 40, 39 },
+//	{ 44, 45, 46, 47, 48 }
+//};
+
+//full matrix I have
+// int ledMatrix[xMax][yMax] = {
+//	{	0, 	21, 22, 43, 44 },
+//	{	1, 	20, 23, 42, 45 },
+//	{	2, 	19, 24, 41, 46 },
+//	{	3, 	18, 25, 40, 47 },
+//	{	4, 	17, 26, 39, 48 },
+//	{	5, 	16, 27, 38, 49 },
+//	{	6, 	15, 28, 37, 50 },
+//	{	7, 	14, 29, 36, 51 },
+//	{	8, 	13, 30, 35, 52 },
+//	{	9, 	12, 31, 34, 53 },
+//	{  10,	11,	32,	33,	54 }
+//};
+
+//Possible LED Goggles
+int ledMatrix[xMax][yMax] = {
+  {  0,  0,  0,  26,  25,  0,  0,  0,  0,  0,  0,  8,  7,  0,  0,  0 },
+  {  0,  0,  27,  0,  0,  24,  0,  0,  0,  0,  9,  0,  0,  6,  0,  0 },
+  {  0,  28,  0,  0,  0,  0,  23,  0,  0, 10,  0,  0,  0,  0,  5,  0 },
+  {  29,  0,  0,  0,  0,  0,  0,  22,  11, 0,  0,  0,  0,  0,  0,  4 },
+  {  30,  0,  0,  0,  0,  0,  0,  21,  12, 0,  0,  0,  0,  0,  0,  3 },
+  {  0,  31,  0,  0,  0,  0,  20,  0,  0,  13, 0,  0,  0,  0,  2,  0 },
+  {  0,  0,  32,  0,  0,  19,  0,  0,  0,  0,  14,  0,  0, 1,  0,  0 },
+  {  0,  0,   0,  17, 18,  0,  0,  0,  0,  0,  0,  15, 16,  0,  0,  0  }
+};
+//uint8_t brightness = 32;
+
+int spread = 12;
+int startX = 0;
+int startY = 16;
+int stopX = 16;
+int stopY = 0;
+int A = (stopX - startX);
+int B = (stopY - startY);
+int C1 = A * startX + B * startY;
+int C2 = A * stopX + B * stopY;
+
+int C = 0;
+
+int start_color = 0;
+int end_color = 255;
+int color = 0;
+
+long totalTime = 0;
+int previousAveHeading = 0;
+int previousHeading = 0;
+int shiftX = 0;
+int shiftY = 0;
+
+Average<float> ave(10);
+
 
 void setup()
 {
 
-//	Serial.begin(9600);
+	Serial.begin(9600);
 	if (WAIT_FOR_KEYBOARD) {
 
 		// Wait for serial to initalize.
@@ -65,71 +138,17 @@ void setup()
 	currentBlending = BLEND;
 
 	colorOff();
-
+        Serial.print("C1 :");Serial.println(C1);
+        Serial.print("C1 :");Serial.println(C2);
 }
 
-const int xMax = 5;
-const int yMax = 5;
-const int xMin = 0;
-const int yMin = 0;
-
-//test matrix for LED rings
-//int ledMatrix[xMax][yMax] = {
-//	{  0,  0,  2,  0,  0 },
-//	{  0, 20,  0, 18,  0 },
-//	{ 22,  0,  0,  0, 26 },
-//	{  0, 42,  0, 40,  0 },
-//	{  0,  0, 46,  0,  0 }
-//};
-
-int ledMatrix[xMax][yMax] = {
-	{  0,  1,  2,  3,  4 },
-	{ 21, 20, 19, 18, 17 },
-	{ 22, 23, 24, 25, 26 },
-	{ 43, 42, 41, 40, 39 },
-	{ 44, 45, 46, 47, 48 }
-};
-
-//full matrix I have
-//int ledMatrix[xMax][yMax] = {
-//	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 },
-//	{ 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11 },
-//	{ 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
-//	{ 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33 },
-//	{ 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54 }
-//};
-
-int startX = xMin;
-int startY = yMin;
-int stopX = xMax - 1;
-int stopY = yMax - 1;
-int A = (stopX - startX);
-int B = (stopY - startY);
-int C1 = A * startX + B * startY;
-int C2 = A * stopX + B * stopY;
-
-int C = 0;
-
-int start_color = 0;
-int end_color = 255;
-int color = 0;
-
-long totalTime = 0;
-int previousAveHeading = 0;
-int previousHeading = 0;
-int shiftX = 0;
-int shiftY = 0;
-
-Average<float> ave(10);
-
-int spread = 3;
 
 void loop()
 {
         int currentHeading = readMag();
-//        if(currentHeading == previousHeading){
-//           return;
-//        }
+        if(currentHeading == previousHeading){
+           return;
+        }
         if(currentHeading == 0){
           return;
         }
@@ -138,22 +157,22 @@ void loop()
         int currentAveHeading = ave.mean();
         
         if((currentAveHeading - previousAveHeading) >= 2 ){
-          Serial.println(currentAveHeading - previousAveHeading);
              previousAveHeading = currentAveHeading;   
              shiftX++;
+             if( shiftX > (stopX * 4) -1){
+                shiftX = startX; 
+             } 
+             Serial.print("ShiftX :");Serial.println(shiftX);
              ShowGradient();
-             if( shiftX > (xMax - 1) * (xMax - 1)){
-                shiftX = 0; 
-             }
         }
         if( (currentAveHeading - previousAveHeading) <= -2 ){
-          Serial.println(currentAveHeading - previousAveHeading);
             previousAveHeading = currentAveHeading; 
             shiftX--;
-            ShowGradient();
-            if( shiftX > xMin){
-                shiftX = 0; 
+            if( shiftX < startX ){
+                shiftX = (stopX * 4) -1; 
              }
+             Serial.print("ShiftX :");Serial.println(shiftX);
+             ShowGradient();
         }
         //moves LED rainbow (angled gradient) Left 1 cycle
 //	GradientLeft();
@@ -161,7 +180,6 @@ void loop()
 //	GradientRight();
 //	FastLED.delay(1000 / UPDATES_PER_SECOND);
 }
-
 
 //
 //void GradientRight() {
@@ -203,25 +221,40 @@ void ShowGradient() {
 //		Serial.print(shiftX); Serial.print("\n");
 		for (int x = xMin + shiftX; x < xMax + shiftX; x++){
 			for (int y = yMin + shiftY; y < yMax + shiftY; y++){
-				C = A * x +  B * y;
-				if (C > C2){
-					C = C2 - (C - C2);
-				}
-				if (C < C1){
-					C = C1 - (C - C1);
-				}
-				color = (start_color * (C2 - C) + end_color * (C - C1)) / (C2 - C1);
-				if (color < 10){
-
-					Serial.print("  "); Serial.print(color); Serial.print(" ");
-				}
-				else if (color < 100 && color > 10){
-					Serial.print(" "); Serial.print(color); Serial.print(" ");
-				}
+                                if(ledMatrix[x - shiftX][y - shiftY] == 0){
+                                  
+                                }
 				else{
-					Serial.print(color); Serial.print(" ");
-				}
-				leds[ledMatrix[x - shiftX][y - shiftY]] = ColorFromPalette(currentPalette, color, brightness, currentBlending);
+                                    C = A * x +  B * y;
+    				  if (C > C2){
+    					C = C2 - (C - C2);
+    				  }
+    				  if (C < C1){
+    					C = C1 - (C - C1);
+    				  }
+    		                  if (C < 10){
+    					Serial.print("  "); Serial.print(C); Serial.print(" ");
+    				  }
+    				  else if (C < 100 && C > 10){
+    					Serial.print(" "); Serial.print(C); Serial.print(" ");
+    				  }
+    				  else{
+    					Serial.print(C); Serial.print(" ");
+    				  }
+    //				color = (start_color * (C2 - C) + end_color * (C - C1)) / (C2 - C1);
+                                    color = map(C,C1,C2,start_color,end_color);
+    //				if (color < 10){
+    //
+    //					Serial.print("  "); Serial.print(color); Serial.print(" ");
+    //				}
+    //				else if (color < 100 && color > 10){
+    //					Serial.print(" "); Serial.print(color); Serial.print(" ");
+    //				}
+    //				else{
+    //					Serial.print(color); Serial.print(" ");
+    //				}
+    				  leds[ (ledMatrix[x - shiftX][y - shiftY] - 1) ] = ColorFromPalette(currentPalette, color, BRIGHTNESS, currentBlending);
+                            }
 			}
 			Serial.print("\n");
 		}
@@ -253,8 +286,7 @@ float readMag(){
 		heading = 360 + heading;
 	}
 	intHeading = (int)heading; // round and convert to int
-	Serial.print("Compass Heading: ");
-	Serial.println(intHeading);
+//	Serial.print("Compass Heading: ");Serial.println(intHeading);
 	return intHeading;
 }
 
