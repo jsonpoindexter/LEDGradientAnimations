@@ -10,10 +10,10 @@ Adafruit_LSM303_Mag_Unified mag = Adafruit_LSM303_Mag_Unified(12345);
 
 #include <FastLED.h>
 
-#define WAIT_FOR_KEYBOARD 1
+#define WAIT_FOR_KEYBOARD 0
 
 #define LED_PIN     2
-#define NUM_LEDS    60
+#define NUM_LEDS    32
 #define BRIGHTNESS  64             
 #define LED_TYPE    WS2811
 #define COLOR_ORDER GRB
@@ -38,7 +38,11 @@ int A = (stopX - startX);
 int B = (stopY - startY);
 int C1 = 0;
 int C2 = 450;
-int refArray[32] = { 285, 285, 285, 270, 240, 210, 180, 165, 165, 165, 165, 180, 210, 240, 270, 285, 150, 165, 165, 165, 165, 150, 120, 90, 60, 45, 45, 45, 45, 60, 90, 120 };
+const int refArraySize = 32;
+const int refArray[refArraySize] = { 285, 285, 285, 270, 240, 210, 180, 165, 165, 165, 165, 180, 210, 240, 270, 285, 150, 165, 165, 165, 165, 150, 120, 90, 60, 45, 45, 45, 45, 60, 90, 120 };
+//for testing on a strand
+//const int refArraySize = 22;
+//int refArray[refArraySize] = {45, 45, 60, 60, 90, 90, 120, 120, 150, 150, 165, 165, 180,180,  210, 210, 240, 240,  270, 270,  285, 285};
 int C = 0;
 
 int start_color = 0;
@@ -95,85 +99,92 @@ void setup()
 int currentHeading;
 void loop()
 {
-	if (Serial.available() > 0) {
-		char inChar = Serial.read();
-		if (inChar == 'a'){
-			currentHeading = currentHeading - 3;
-		}
-		if (inChar == 'd'){
-			currentHeading = currentHeading + 3;
-		}
-		if (currentHeading > 360){
-			currentHeading = 0;
-		}
-		if (currentHeading < 0){
-			currentHeading = 360;
-		}
-		//        int currentHeading = readMag();
-		//        if(currentHeading == 0){
-		//          return;  
-		//        }
-		if (currentHeading != previousHeading){
-			Serial.print("currentHeading: "); Serial.println(currentHeading);
-			Serial.print("currentHeading - previousHeading: "); Serial.println(currentHeading - previousHeading);
-			if ((currentHeading - previousHeading) >= 2){
-				if ((currentHeading - previousHeading) >= 180){
-					shiftX--;
-					if (shiftX < startX){
-						shiftX = (stopX * 4 * spread) - 1;
-					}
-					if (shiftX >(stopX * 4 * spread) - 1){
-						shiftX = startX;
-					}
-					Serial.print("ShiftX :"); Serial.println(shiftX);
-					ShowGradient();
-					previousHeading = currentHeading;
+	//For testing
+	//if (Serial.available() > 0) {
+	//	char inChar = Serial.read();
+	//	if (inChar == 'a'){
+	//		currentHeading = currentHeading - 3;
+	//	}
+	//	if (inChar == 'd'){
+	//		currentHeading = currentHeading + 3;
+	//	}
+	//	if (currentHeading > 360){
+	//		currentHeading = 0;
+	//	}
+	//	if (currentHeading < 0){
+	//		currentHeading = 360;
+	//	}
+	int currentHeading = readMag();
+	if (currentHeading == 0){
+		return;
+	}
+	if (currentHeading != previousHeading){
+		if ((currentHeading - previousHeading) >= 2){
+			if ((currentHeading - previousHeading) >= 180){
+				shiftX--;
+				if (shiftX < startX){
+					shiftX = (stopX * 4 * spread) - 1;
 				}
-				else{
-					shiftX++;
-					if (shiftX < startX){
-						shiftX = (stopX * 4 * spread) - 1;
-					}
-					if (shiftX >(stopX * 4 * spread) - 1){
-						shiftX = startX;
-					}
-					Serial.print("ShiftX :"); Serial.println(shiftX);
-					ShowGradient();
-					previousHeading = currentHeading;
+				if (shiftX >(stopX * 4 * spread) - 1){
+					shiftX = startX;
 				}
+				Serial.print("currentHeading: "); Serial.println(currentHeading);
+				Serial.print("currentHeading - previousHeading: "); Serial.println(currentHeading - previousHeading);
+				Serial.print("ShiftX :"); Serial.println(shiftX);
+				ShowGradient();
+				previousHeading = currentHeading;
 			}
-			if ((currentHeading - previousHeading) <= -2){
-				if ((currentHeading - previousHeading) <= -180){
-					shiftX++;
-					if (shiftX < startX){
-						shiftX = (stopX * 4 * spread) - 1;
-					}
-					if (shiftX >(stopX * 4 * spread) - 1){
-						shiftX = startX;
-					}
-					Serial.print("ShiftX :"); Serial.println(shiftX);
-					ShowGradient();
-					previousHeading = currentHeading;
+			else{
+				shiftX++;
+				if (shiftX < startX){
+					shiftX = (stopX * 4 * spread) - 1;
 				}
-				else{
-					shiftX--;
-					if (shiftX < startX){
-						shiftX = (stopX * 4 * spread) - 1;
-					}
-					if (shiftX >(stopX * 4 * spread) - 1){
-						shiftX = startX;
-					}
-					Serial.print("ShiftX :"); Serial.println(shiftX);
-					ShowGradient();
-					previousHeading = currentHeading;
+				if (shiftX >(stopX * 4 * spread) - 1){
+					shiftX = startX;
 				}
+				Serial.print("currentHeading: "); Serial.println(currentHeading);
+				Serial.print("currentHeading - previousHeading: "); Serial.println(currentHeading - previousHeading);
+				Serial.print("ShiftX :"); Serial.println(shiftX);
+				ShowGradient();
+				previousHeading = currentHeading;
+			}
+		}
+		if ((currentHeading - previousHeading) <= -2){
+			if ((currentHeading - previousHeading) <= -180){
+				shiftX++;
+				if (shiftX < startX){
+					shiftX = (stopX * 4 * spread) - 1;
+				}
+				if (shiftX >(stopX * 4 * spread) - 1){
+					shiftX = startX;
+				}
+				Serial.print("currentHeading: "); Serial.println(currentHeading);
+				Serial.print("currentHeading - previousHeading: "); Serial.println(currentHeading - previousHeading);
+				Serial.print("ShiftX :"); Serial.println(shiftX);
+				ShowGradient();
+				previousHeading = currentHeading;
+			}
+			else{
+				shiftX--;
+				if (shiftX < startX){
+					shiftX = (stopX * 4 * spread) - 1;
+				}
+				if (shiftX >(stopX * 4 * spread) - 1){
+					shiftX = startX;
+				}
+				Serial.print("currentHeading: "); Serial.println(currentHeading);
+				Serial.print("currentHeading - previousHeading: "); Serial.println(currentHeading - previousHeading);
+				Serial.print("ShiftX :"); Serial.println(shiftX);
+				ShowGradient();
+				previousHeading = currentHeading;
 			}
 		}
 	}
+	//}
 }
 
 void ShowGradient() {
-	for (int i = 0; i < 32; i++){
+	for (int i = 0; i < refArraySize; i++){
 		C = refArray[i] + (15 * shiftX);
 		if (C > C2){
 			C = C2 - (C - C2);
